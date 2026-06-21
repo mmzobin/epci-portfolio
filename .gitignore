@@ -1,0 +1,13 @@
+.next/
+node_modules/
+test-results/
+playwright-report/
+prisma/dev.db
+prisma/dev.db-journal
+.env
+.env.*
+.env.prod
+.env.backup
+*.log
+tsconfig.tsbuildinfo
+backups/

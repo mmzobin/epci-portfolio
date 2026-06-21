@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EPCI · Гайд для новичка</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background:#050806; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; display:flex; justify-content:center; padding:20px 12px 40px; }
+  .wrap { width:100%; max-width:420px; }
+  .hero { text-align:center; margin-bottom:22px; }
+  .hero .logo { width:54px; height:54px; border-radius:50%; background:#1d3a2e; border:2px solid #cdf24a; display:flex; align-items:center; justify-content:center; font-size:24px; margin:0 auto 10px; }
+  .hero h1 { font-size:22px; font-weight:600; letter-spacing:0.02em; }
+  .hero p { font-size:13.5px; color:#9fb3ab; line-height:1.6; margin-top:8px; }
+  .step-label { font-size:15px; font-weight:600; margin:22px 2px 8px; display:flex; align-items:center; gap:8px; }
+  .step-label .n { width:24px; height:24px; border-radius:50%; background:#cdf24a; color:#050806; font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .screen { background:#0a100d; border-radius:18px; padding:12px; border:1px solid #ffffff10; }
+  .cap { font-size:12.5px; color:#9fb3ab; line-height:1.65; margin:8px 4px 0; }
+  .cap b { color:#fff; }
+  .mark { width:22px; height:22px; border-radius:50%; background:#cdf24a; color:#050806; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .btn { flex:1; text-align:center; background:#cdf24a; color:#050806; font-size:13px; font-weight:600; border-radius:9px; padding:9px; }
+  .cmd { display:flex; gap:10px; padding:8px 0; border-bottom:1px solid #ffffff10; font-size:13px; }
+  .cmd code { color:#cdf24a; font-weight:600; min-width:84px; }
+  .cmd span { color:#9fb3ab; }
+  .foot { margin-top:24px; text-align:center; font-size:12px; color:#5a6b62; line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="logo">🎾</div>
+    <h1>EPCI — гайд для новичка</h1>
+    <p>Падел-сообщество прямо в Telegram. Записывайся на игры, следи за составом и рейтингом — без регистраций и паролей.</p>
+  </div>
+
+  <div class="step-label"><span class="n">1</span> Открыть приложение</div>
+  <div class="screen">
+    <div style="display:flex; align-items:center; gap:8px; padding:2px 4px 10px; border-bottom:1px solid #ffffff12;">
+      <div style="width:30px;height:30px;border-radius:50%;background:#1d3a2e;border:1px solid #cdf24a;display:flex;align-items:center;justify-content:center;font-size:13px;">🎾</div>
+      <div><div style="font-size:13px;font-weight:500;">EPCI · padel community</div><div style="font-size:10px;color:#7d938a;">группа</div></div>
+    </div>
+    <div style="margin:12px 0;background:#13201a;border-radius:12px;padding:10px 12px;">
+      <div style="font-size:11px;color:#cdf24a;font-weight:500;margin-bottom:3px;">📌 Закреплено</div>
+      <div style="font-size:12px;color:#cfe0d6;line-height:1.5;">Записывайся на игры, смотри состав и рейтинг — прямо в Telegram.</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+        <span class="btn">Открыть EPCI</span><span class="mark">1</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+      <span class="mark">2</span>
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:#16221d;border:1px solid #2a3a32;font-size:16px;">▤</span>
+      <span style="flex:1;background:#16221d;border-radius:18px;padding:8px 12px;font-size:12px;color:#7d938a;">Сообщение…</span>
+    </div>
+  </div>
+  <p class="cap"><b>1</b> — кнопка под закреплённым сообщением, или <b>2</b> — кнопка приложения у бота (слева от поля ввода). Вход автоматический через Telegram.</p>
+
+  <div class="step-label"><span class="n">2</span> Записаться на игру</div>
+  <div class="screen">
+    <div style="font-size:13px;font-weight:500;padding:2px 2px 10px;">Игры</div>
+    <div style="background:#101915;border:1px solid #ffffff12;border-radius:14px;padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:13px;font-weight:500;">Сб, 21 июн · 19:00</div>
+        <span style="font-size:11px;background:#1d3a2e;color:#9fe1cb;border-radius:20px;padding:2px 8px;">3/4</span>
+      </div>
+      <div style="font-size:11px;color:#7d938a;margin-top:3px;">Холон · Padel Club · ур. 2.0–3.0 · ₪70</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+        <div style="display:flex;">
+          <span style="width:26px;height:26px;border-radius:50%;background:#1d3a2e;border:2px solid #101915;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9fe1cb;">МЗ</span>
+          <span style="width:26px;height:26px;border-radius:50%;background:#1d3a2e;border:2px solid #101915;margin-left:-8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9fe1cb;">АО</span>
+          <span style="width:26px;height:26px;border-radius:50%;background:#1d3a2e;border:2px solid #101915;margin-left:-8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9fe1cb;">ДМ</span>
+        </div>
+        <span style="font-size:11px;color:#7d938a;">кто идёт</span>
+        <span class="mark" style="width:20px;height:20px;">2</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+        <span class="btn">Записаться</span><span class="mark">1</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:4px;margin-top:12px;background:#101915;border-radius:12px;padding:6px;align-items:center;">
+      <span style="flex:1;text-align:center;font-size:11px;color:#cdf24a;font-weight:500;padding:4px 0;">🎾 Игры</span>
+      <span style="flex:1;text-align:center;font-size:11px;color:#7d938a;padding:4px 0;">🏆 Турниры</span>
+      <span style="flex:1;text-align:center;font-size:11px;color:#7d938a;padding:4px 0;">📊 Рейтинг</span>
+      <span style="flex:1;text-align:center;font-size:11px;color:#7d938a;padding:4px 0;">👤 Профиль</span>
+      <span class="mark" style="width:20px;height:20px;">3</span>
+    </div>
+  </div>
+  <p class="cap"><b>1</b> — тап «Записаться». <b>2</b> — видно, кто уже идёт и сколько мест. <b>3</b> — турниры и рейтинг внизу.</p>
+
+  <div class="step-label"><span class="n">3</span> Турниры и рейтинг</div>
+  <div class="screen">
+    <p style="font-size:12.5px;color:#cfe0d6;line-height:1.7;">
+      🏆 <b>Турниры</b> — участвуй, смотри расписание «кто с кем играет» и результаты.<br>
+      📊 <b>Рейтинг</b> — топ игроков по очкам за турниры, твоя статистика и динамика места.<br>
+      👤 <b>Профиль</b> — твой уровень и личная статистика.<br>
+      🌐 <b>Язык</b> — переключение RU / EN внутри приложения.
+    </p>
+  </div>
+
+  <div class="step-label">Команды бота</div>
+  <div class="screen">
+    <div class="cmd"><code>/games</code><span>ближайшие игры</span></div>
+    <div class="cmd"><code>/ranking</code><span>топ рейтинга</span></div>
+    <div class="cmd"><code>/start</code><span>открыть приложение</span></div>
+    <div class="cmd" style="border-bottom:none;"><code>/help</code><span>список команд</span></div>
+  </div>
+
+  <div class="foot">Вопросы и идеи — пишите в чат сообщества 🎾<br>EPCI · Exclusive Padel Crew Israel</div>
+
+</div>
+</body>
+</html>

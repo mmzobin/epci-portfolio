@@ -1,0 +1,86 @@
+name: Publish Test Report
+
+# Runs the suite and publishes the Playwright HTML report to GitHub Pages, so the
+# repo has a public, clickable "latest test run" link for the portfolio.
+# One-time setup: repo Settings → Pages → Source = "GitHub Actions".
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: padel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d padel_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/padel_test
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/padel_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/padel_test
+      TEST_RESET_TOKEN: local-test-token
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed database
+        run: npm run prisma:seed
+
+      # Publish the report even if some tests fail — the report's job is to SHOW
+      # the results, red or green.
+      - name: Run E2E (generate report)
+        continue-on-error: true
+        run: npx playwright test --grep-invert @prod-smoke --project=chromium --workers=1
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload report artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: playwright-report
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

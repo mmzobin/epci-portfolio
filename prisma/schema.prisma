@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String         @id @default(cuid())
+  name             String
+  lastName         String
+  email            String         @unique
+  passwordHash     String
+  telegramId       String?        @unique
+  telegramPhotoUrl String?
+  preferredLang    String?
+  phone            String?
+  telegramUsername String?
+  photoUrl         String?
+  avatarPath       String?
+  city             String?
+  level            Float          @default(1.0)
+  skillRating      Float?
+  ratedGames       Int            @default(0)
+  levelAssessmentScore Int?
+  levelAssessmentDate  DateTime?
+  role             String         @default("PLAYER")
+  hidden           Boolean        @default(false)
+  deactivatedAt    DateTime?
+  gamesCount       Int            @default(0)
+  cancellations    Int            @default(0)
+  noShows          Int            @default(0)
+  createdAt        DateTime       @default(now())
+  organizedGames   Game[]         @relation("OrganizerGames")
+  participations   Participation[]
+  createdTournaments Tournament[] @relation("CreatedTournaments")
+  tournamentParticipations TournamentParticipation[]
+  rankingSnapshots RankingSnapshot[]
+  invitedGuests    Guest[]        @relation("InvitedGuests")
+  ratingChanges    RatingChange[]
+  matchConfirmations MatchConfirmation[]
+}
+
+model RankingSnapshot {
+  id        String   @id @default(cuid())
+  userId    String
+  place     Int
+  points    Int
+  takenAt   DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([takenAt])
+  @@index([userId, takenAt])
+}
+
+model Game {
+  id              String          @id @default(cuid())
+  title           String
+  startsAt        DateTime
+  city            String
+  club            String
+  clubId          String?
+  address         String
+  courtNumber     String
+  courtPricePerHour Decimal
+  maxPlayers      Int
+  pricePerPlayer  Decimal
+  minLevel        Float
+  maxLevel        Float
+  organizerId     String
+  status          String          @default("OPEN")
+  courtBooked     Boolean         @default(false)
+  bookedById      String?
+  bookedAt        DateTime?
+  ranked          Boolean         @default(false)
+  ratingAppliedAt DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  clubRef         Club?           @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  organizer       User            @relation("OrganizerGames", fields: [organizerId], references: [id])
+  participations  Participation[]
+  guests          Guest[]
+  rounds          MatchRound[]
+  confirmations   MatchConfirmation[]
+  ratingChanges   RatingChange[]
+
+  @@index([clubId])
+}
+
+model MatchRound {
+  id        String   @id @default(cuid())
+  gameId    String
+  idx       Int
+  aPlayer1  String
+  aPlayer2  String
+  bPlayer1  String
+  bPlayer2  String
+  scoreA    Int
+  scoreB    Int
+  createdAt DateTime @default(now())
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
+}
+
+model MatchConfirmation {
+  id          String   @id @default(cuid())
+  gameId      String
+  userId      String
+  confirmedAt DateTime @default(now())
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, userId])
+  @@index([gameId])
+}
+
+model RatingChange {
+  id        String   @id @default(cuid())
+  gameId    String
+  userId    String
+  before    Float
+  after     Float
+  delta     Float
+  createdAt DateTime @default(now())
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([gameId])
+}
+
+model Guest {
+  id          String   @id @default(cuid())
+  gameId      String
+  invitedById String
+  name        String?
+  createdAt   DateTime @default(now())
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  invitedBy   User     @relation("InvitedGuests", fields: [invitedById], references: [id])
+
+  @@index([gameId])
+  @@index([invitedById])
+}
+
+model Participation {
+  id            String              @id @default(cuid())
+  userId        String
+  gameId        String
+  status        String              @default("JOINED")
+  paymentStatus String              @default("UNPAID")
+  paidAt        DateTime?
+  paidById      String?
+  noShowMarkedAt DateTime?
+  noShowMarkedById String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  user          User                @relation(fields: [userId], references: [id])
+  game          Game                @relation(fields: [gameId], references: [id])
+
+  @@unique([userId, gameId])
+  @@index([gameId, status, createdAt])
+}
+
+model Club {
+  id                 String    @id @default(cuid())
+  name               String
+  city               String
+  address            String
+  hourlyCourtPrice   Decimal
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+  games              Game[]
+
+  @@index([city])
+  @@index([deletedAt])
+}
+
+model Tournament {
+  id            String                    @id @default(cuid())
+  title         String
+  startsAt      DateTime?
+  city          String?
+  club          String?
+  format        String                    @default("MINI")
+  status        String                    @default("DRAFT")
+  courts        Int                       @default(1)
+  pointsPerMatch Int                      @default(24)
+  scheduleReady Boolean                   @default(false)
+  createdById   String
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  completedAt   DateTime?
+  createdBy     User                      @relation("CreatedTournaments", fields: [createdById], references: [id])
+  participants  TournamentParticipation[]
+  rounds        TournamentRound[]
+  matches       TournamentMatch[]
+
+  @@index([status, startsAt])
+  @@index([createdById])
+}
+
+model TournamentRound {
+  id           String            @id @default(cuid())
+  tournamentId String
+  number       Int
+  createdAt    DateTime          @default(now())
+  tournament   Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matches      TournamentMatch[]
+
+  @@index([tournamentId])
+}
+
+model TournamentMatch {
+  id           String          @id @default(cuid())
+  tournamentId String
+  roundId      String
+  court        Int             @default(1)
+  team1aId     String
+  team1bId     String
+  team2aId     String
+  team2bId     String
+  team1Score   Int?
+  team2Score   Int?
+  createdAt    DateTime        @default(now())
+  tournament   Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  round        TournamentRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId])
+  @@index([roundId])
+}
+
+model TournamentParticipation {
+  id               String     @id @default(cuid())
+  tournamentId     String
+  userId           String
+  status           String     @default("JOINED")
+  partnerId        String?
+  matchesPlayed    Int        @default(0)
+  wins             Int        @default(0)
+  tournamentPoints Int        @default(0)
+  place            Int?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  tournament       Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user             User       @relation(fields: [userId], references: [id])
+
+  @@unique([tournamentId, userId])
+  @@index([userId])
+  @@index([tournamentId, status])
+}

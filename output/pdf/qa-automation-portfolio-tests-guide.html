@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>QA Automation Portfolio Tests Guide</title>
+  <style>
+    @page { size: A4; margin: 16mm 14mm 18mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, "Helvetica Neue", sans-serif;
+      color: #17202a;
+      background: #fff;
+      line-height: 1.42;
+      font-size: 10.4pt;
+    }
+    h1, h2, h3 { margin: 0; color: #101820; line-height: 1.16; }
+    h1 { font-size: 25pt; }
+    h2 { font-size: 17pt; margin-top: 20px; border-bottom: 1px solid #d7dde5; padding-bottom: 5px; }
+    h3 { font-size: 12.8pt; margin-top: 14px; }
+    p { margin: 6px 0; }
+    ul { margin: 6px 0 8px 18px; padding: 0; }
+    li { margin: 2px 0; }
+    .cover {
+      min-height: 230mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border: 2px solid #111827;
+      padding: 28px;
+    }
+    .kicker { text-transform: uppercase; letter-spacing: .08em; font-size: 9pt; color: #516173; font-weight: 700; }
+    .subtitle { font-size: 13pt; margin-top: 14px; color: #384454; max-width: 620px; }
+    .meta { margin-top: 28px; color: #526070; font-size: 9.5pt; }
+    .page-break { page-break-before: always; }
+    .note {
+      border-left: 4px solid #2563eb;
+      background: #f3f7ff;
+      padding: 8px 10px;
+      margin: 10px 0;
+    }
+    .test-card {
+      page-break-inside: avoid;
+      border: 1px solid #d8dee8;
+      border-radius: 8px;
+      padding: 11px 12px;
+      margin: 12px 0;
+      background: #fff;
+    }
+    .badge {
+      display: inline-block;
+      background: #eef2f7;
+      color: #243041;
+      border: 1px solid #d7dde5;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 8.4pt;
+      margin: 5px 0 2px;
+      font-weight: 700;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #111827;
+      color: #edf2f7;
+      border-radius: 7px;
+      padding: 9px 10px;
+      margin: 8px 0;
+      font-family: Menlo, Consolas, "Courier New", monospace;
+      font-size: 7.8pt;
+      line-height: 1.36;
+      page-break-inside: avoid;
+    }
+    code { font-family: Menlo, Consolas, "Courier New", monospace; }
+    .toc {
+      columns: 2;
+      column-gap: 24px;
+      font-size: 9.5pt;
+    }
+    .toc div { break-inside: avoid; margin-bottom: 5px; }
+    .small { font-size: 9pt; color: #536171; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div class="kicker">Playwright + POM + Portfolio</div>
+    <h1>Гайд по 20 автотестам для QA Automation портфолио</h1>
+    <p class="subtitle">Пошаговая шпаргалка по твоему проекту Padel Community: куда класть тесты, как использовать fixtures и POM, какие ожидания писать и как должен выглядеть код.</p>
+    <div class="meta">
+      <p><strong>Проект:</strong> padel-community</p>
+      <p><strong>Стек:</strong> Playwright, TypeScript, Page Object Model, test fixtures</p>
+      <p><strong>Главный принцип:</strong> тест описывает бизнес-сценарий, POM хранит детали UI.</p>
+    </div>
+  </section>
+
+  <section class="page-break">
+    <h2>Базовые правила</h2>
+    <div class="note">
+      Reset уже централизован в <code>tests/fixtures/test.ts</code>. Если тест использует <code>page</code> или любой POM fixture, reset вызывается автоматически. Если тест использует только <code>request</code>, добавь <code>test.beforeEach(async ({ resetApp }) => await resetApp())</code>.
+    </div>
+    <pre><code>import { test, expect } from "./fixtures/test";
+import { users, games, clubs, fullName } from "./data/test-data";
+
+test.describe("Feature area", () =&gt; {
+  test("[category] scenario name", async ({ loginPage, homePage }) =&gt; {
+    await loginPage.loginAndExpectHome(users.sasha.email);
+    await homePage.openGame(games.open);
+  });
+});</code></pre>
+    <ul>
+      <li>Не импортируй <code>test</code> из <code>@playwright/test</code> в e2e specs - используй <code>./fixtures/test</code>.</li>
+      <li>Не используй <code>waitForTimeout</code>. Жди URL, alert, visible/hidden, enabled/disabled, текст.</li>
+      <li>Если локатор повторяется - добавь метод в POM.</li>
+      <li>Если тест меняет БД - reset нужен. Сейчас он уже встроен в page fixture.</li>
+      <li>Имена тестов оставляй бизнесовыми: что проверяем и какой риск закрываем.</li>
+    </ul>
+
+    <h2>Карта файлов</h2>
+    <div class="toc">
+      <div>1. <strong>[functional] user can update profile and changes persist after relogin</strong><br><span class="small">tests/auth.spec.ts</span></div><div>2. <strong>[functional] user can leave waitlist from full match</strong><br><span class="small">tests/matches.spec.ts</span></div><div>3. <strong>[functional] organizer can edit game club and price is recalculated</strong><br><span class="small">tests/organizer.spec.ts</span></div><div>4. <strong>[functional] organizer can cancel an open game</strong><br><span class="small">tests/organizer.spec.ts</span></div><div>5. <strong>[functional] admin can change user role and new permissions are applied</strong><br><span class="small">tests/admin.spec.ts</span></div><div>6. <strong>[negative] non-admin cannot access admin users page</strong><br><span class="small">tests/admin.spec.ts</span></div><div>7. <strong>[negative] non-organizer cannot access organizer game management</strong><br><span class="small">tests/organizer.spec.ts</span></div><div>8. <strong>[negative] organizer cannot add the same player twice</strong><br><span class="small">tests/organizer.spec.ts</span></div><div>9. <strong>[negative] tournament results reject wins greater than matches</strong><br><span class="small">tests/admin.spec.ts</span></div><div>10. <strong>[negative] club creation validates required name city address and price</strong><br><span class="small">tests/admin.spec.ts</span></div><div>11. <strong>[regression] waitlisted player is promoted when participant leaves and order is preserved</strong><br><span class="small">tests/matches.spec.ts</span></div><div>12. <strong>[regression] completed tournament updates ranking after page refresh</strong><br><span class="small">tests/ranking.spec.ts</span></div><div>13. <strong>[regression] cancelled game deep link is read-only and not joinable</strong><br><span class="small">tests/matches.spec.ts</span></div><div>14. <strong>[api] POST /api/level-assessment saves valid assessment for authenticated user</strong><br><span class="small">tests/api.spec.ts</span></div><div>15. <strong>[api] POST /api/level-assessment rejects unauthenticated request</strong><br><span class="small">tests/api.spec.ts</span></div><div>16. <strong>[api] POST /api/test/reset rejects invalid reset token</strong><br><span class="small">tests/api.spec.ts</span></div><div>17. <strong>[smoke] guest can open home ranking login and register pages</strong><br><span class="small">tests/smoke.spec.ts</span></div><div>18. <strong>[responsive] mobile user can login open match details and navigate profile</strong><br><span class="small">tests/responsive.spec.ts</span></div><div>19. <strong>[accessibility] critical pages have no blocking accessibility violations</strong><br><span class="small">tests/accessibility.spec.ts</span></div><div>20. <strong>[security] deactivated user cannot login</strong><br><span class="small">tests/auth.spec.ts</span></div>
+    </div>
+  </section>
+
+  <section class="page-break">
+    <h2>20 тестов: подсказки и код</h2>
+    
+      <article class="test-card">
+        <h3>1. [functional] user can update profile and changes persist after relogin</h3>
+        <div class="badge">tests/auth.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет end-to-end поток изменения профиля и сохранение данных после новой авторизации.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Используй ProfilePage, не пиши локаторы профиля прямо в тесте.</li><li>После submit жди success alert или обновлённое значение в profile card.</li><li>Persistence лучше проверять после logout/login, а не только сразу после save.</li></ul>
+        <p><strong>Полезный POM/helper:</strong></p><pre><code>// tests/pages/profile-page.ts
+async expectProfileContains(...values: string[]) {
+  for (const value of values) {
+    await expect(this.card).toContainText(value);
+  }
+}</code></pre>
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[functional] user can update profile and changes persist after relogin", async ({
+  loginPage,
+  profilePage,
+  page
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.sasha.email);
+
+  await profilePage.goto();
+  await profilePage.updateProfile({ city: "Tel Aviv", phone: "0501234567" });
+  await expect(profilePage.success).toBeVisible();
+  await profilePage.expectProfileContains("Tel Aviv", "0501234567");
+
+  await page.getByTestId("avatar-menu-button").click();
+  await page.getByTestId("logout-button").click();
+
+  await loginPage.loginAndExpectHome(users.sasha.email);
+  await profilePage.goto();
+  await profilePage.expectProfileContains("Tel Aviv", "0501234567");
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>2. [functional] user can leave waitlist from full match</h3>
+        <div class="badge">tests/matches.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет, что игрок может попасть в waitlist полного матча и затем выйти из него.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Используй full seeded game, чтобы не создавать матч вручную.</li><li>Проверяй badge On Waitlist перед leave.</li><li>После leave проверяй, что снова доступно действие Join Waitlist.</li></ul>
+        <p><strong>Полезный POM/helper:</strong></p><pre><code>// tests/pages/game-details-page.ts
+async expectWaitlistActionAvailable() {
+  await expect(this.joinButton).toHaveText("Join Waitlist");
+  await expect(this.joinButton).toBeEnabled();
+}</code></pre>
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[functional] user can leave waitlist from full match", async ({
+  loginPage,
+  homePage,
+  gameDetailsPage
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.admin.email);
+  await homePage.openGame(games.full);
+
+  await gameDetailsPage.expectWaitlistActionAvailable();
+  await gameDetailsPage.join();
+  await gameDetailsPage.expectBadge("On Waitlist");
+
+  await gameDetailsPage.leave();
+
+  await gameDetailsPage.expectWaitlistActionAvailable();
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>3. [functional] organizer can edit game club and price is recalculated</h3>
+        <div class="badge">tests/organizer.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет редактирование клуба/города и автопересчёт цены в форме игры.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Не кликай поля формы из теста - сделай метод updateGame в OrganizerPage.</li><li>Жди redirect ?saved=game после сохранения.</li><li>Проверяй и address, и price, потому что оба зависят от выбранного клуба.</li></ul>
+        <p><strong>Полезный POM/helper:</strong></p><pre><code>// tests/pages/organizer-page.ts
+async updateGame(input: { city?: string; clubLabel?: string; courtNumber?: string }) {
+  if (input.city) await this.testId("game-city").selectOption(input.city);
+  if (input.clubLabel) await this.testId("game-club").selectOption({ label: input.clubLabel });
+  if (input.courtNumber) await this.testId("game-courtNumber").fill(input.courtNumber);
+
+  await Promise.all([
+    this.page.waitForURL(/\/organizer\/games\/[^/]+\?saved=game$/),
+    this.testId("game-save").click()
+  ]);
+  await expect(this.success).toHaveText("Game details saved.");
+}</code></pre>
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[functional] organizer can edit game club and price is recalculated", async ({
+  loginPage,
+  organizerPage,
+  page
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.organizer.email);
+  await organizerPage.goto();
+  await organizerPage.openGame(games.open);
+
+  await organizerPage.updateGame({
+    city: clubs.herzliya.city,
+    clubLabel: clubs.herzliya.name
+  });
+
+  await expect(page.getByTestId("game-address")).toHaveValue(/Ramat Yam/i);
+  await expect(page.getByTestId("game-price")).toHaveValue(/₪/);
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>4. [functional] organizer can cancel an open game</h3>
+        <div class="badge">tests/organizer.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет базовый organizer flow изменения статуса игры на Cancelled.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>У тебя dialogs автоматически accepted в fixture.</li><li>После Cancel жди saved=status или badge Cancelled.</li><li>Проверяй, что Complete становится disabled.</li></ul>
+        <p><strong>Полезный POM/helper:</strong></p><pre><code>// tests/pages/organizer-page.ts
+async cancelGame() {
+  await Promise.all([
+    this.page.waitForURL(/\/organizer\/games\/[^/]+\?saved=status$/),
+    this.gameAction("cancel").click()
+  ]);
+}</code></pre>
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[functional] organizer can cancel an open game", async ({ loginPage, organizerPage }) =&gt; {
+  await loginPage.loginAndExpectHome(users.organizer.email);
+  await organizerPage.goto();
+  await organizerPage.openGame(games.open);
+
+  await organizerPage.cancelGame();
+
+  await expect(organizerPage.gameAction("complete")).toBeDisabled();
+  await expect(organizerPage.gameAction("cancel")).toBeDisabled();
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>5. [functional] admin can change user role and new permissions are applied</h3>
+        <div class="badge">tests/admin.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет RBAC: admin меняет роль игрока, и пользователь получает organizer permissions.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Используй AdminUsersPage.changeRole.</li><li>После смены роли залогинься этим пользователем заново.</li><li>Проверяй не только select, а реальное новое право доступа.</li></ul>
+        <p><strong>Полезный POM/helper:</strong></p><pre><code>// tests/pages/login-page.ts
+async logout() {
+  await this.page.getByTestId("avatar-menu-button").click();
+  await this.page.getByTestId("logout-button").click();
+  await expect(this.page).toHaveURL(/\/login|\/$/);
+}</code></pre>
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[functional] admin can change user role and new permissions are applied", async ({
+  adminUsersPage,
+  loginPage,
+  organizerPage
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.admin.email);
+  await adminUsersPage.goto();
+
+  await adminUsersPage.changeRole(users.sasha.email, "ORGANIZER");
+  await expect(adminUsersPage.success).toBeVisible();
+
+  await loginPage.logout();
+  await loginPage.loginAndExpectHome(users.sasha.email);
+  await organizerPage.goto();
+
+  await expect(organizerPage.newGameLink).toBeVisible();
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>6. [negative] non-admin cannot access admin users page</h3>
+        <div class="badge">tests/admin.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет запрет доступа к admin users для обычного игрока.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Negative access tests лучше держать рядом с admin tests.</li><li>Проверяй итоговый URL или access denied message - зависит от реализации приложения.</li><li>Не проверяй внутреннюю ошибку сервера; нужен пользовательский результат.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[negative] non-admin cannot access admin users page", async ({ loginPage, page }) =&gt; {
+  await loginPage.loginAndExpectHome(users.sasha.email);
+
+  await page.goto("/admin/users");
+
+  await expect(page).not.toHaveURL(/\/admin\/users$/);
+  await expect(page.getByText(/not authorized|access denied|admin/i)).toBeVisible();
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>7. [negative] non-organizer cannot access organizer game management</h3>
+        <div class="badge">tests/organizer.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет, что обычный игрок не может открыть organizer management.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Используй прямой URL, потому что nav link может быть скрыт.</li><li>Для game id используй helper getGameIdByTitle.</li><li>Проверяй redirect или сообщение об отказе доступа.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[negative] non-organizer cannot access organizer game management", async ({
+  loginPage,
+  page
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.sasha.email);
+
+  const gameId = await getGameIdByTitle(games.open);
+  await page.goto(`/organizer/games/${gameId}`);
+
+  await expect(page).not.toHaveURL(new RegExp(`/organizer/games/${gameId}$`));
+  await expect(page.getByText(/not authorized|access denied|organizer/i)).toBeVisible();
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>8. [negative] organizer cannot add the same player twice</h3>
+        <div class="badge">tests/organizer.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет защиту от повторного добавления участника.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Если UI скрывает уже добавленного игрока, проверяй именно отсутствие option.</li><li>Если есть API/action, можно тестировать ошибку через form/API.</li><li>Тест должен отражать продуктовую логику: duplicate player невозможен.</li></ul>
+        <p><strong>Полезный POM/helper:</strong></p><pre><code>// tests/pages/organizer-page.ts
+async expectAddPlayerOptionHidden(firstName: string) {
+  await expect(this.testId(`admin-add-player-option-${firstName}`)).toHaveCount(0);
+}</code></pre>
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[negative] organizer cannot add the same player twice", async ({ loginPage, organizerPage }) =&gt; {
+  await loginPage.loginAndExpectHome(users.admin.email);
+  await organizerPage.goto();
+  await organizerPage.openGame(games.open);
+
+  await organizerPage.addPlayer(users.sasha.name);
+  await organizerPage.expectParticipantText(fullName(users.sasha));
+
+  await organizerPage.expectAddPlayerOptionHidden(users.sasha.name);
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>9. [negative] tournament results reject wins greater than matches</h3>
+        <div class="badge">tests/admin.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет валидацию результатов турнира.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Создание турнира вынеси в helper/POM, чтобы тест был коротким.</li><li>Проверяй error alert, а не просто отсутствие success.</li><li>Данные должны явно нарушать правило: wins &gt; matches.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[negative] tournament results reject wins greater than matches", async ({
+  adminTournamentsPage,
+  loginPage
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.admin.email);
+  await adminTournamentsPage.goto();
+
+  await adminTournamentsPage.createTournament({
+    title: "Invalid Results Cup",
+    startsAt: "2026-07-12T18:00",
+    city: clubs.telAviv.city,
+    club: clubs.telAviv.name
+  });
+  await adminTournamentsPage.addParticipants(users.michael.name, users.anastasia.name);
+
+  await adminTournamentsPage.fillResult(users.michael.name, "1", "2");
+  await adminTournamentsPage.saveResults();
+
+  await expect(adminTournamentsPage.error).toContainText(/wins|matches/i);
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>10. [negative] club creation validates required name city address and price</h3>
+        <div class="badge">tests/admin.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет required validation формы создания клуба.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Не обязательно проверять все browser validation messages, если они нативные.</li><li>Для custom validation проверяй error alert.</li><li>Если submit blocked HTML5 validation, проверяй что row не создан.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[negative] club creation validates required name city address and price", async ({
+  adminClubsPage,
+  loginPage
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.admin.email);
+  await adminClubsPage.goto();
+
+  await adminClubsPage.createClub({
+    name: "",
+    city: "",
+    address: "",
+    price: ""
+  });
+
+  await expect(adminClubsPage.row("")).toHaveCount(0);
+  await expect(adminClubsPage.error.or(adminClubsPage.createForm)).toBeVisible();
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>11. [regression] waitlisted player is promoted when participant leaves and order is preserved</h3>
+        <div class="badge">tests/matches.spec.ts</div>
+        <p><strong>Зачем:</strong> Защищает важную регрессию waitlist promotion.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Проверяй состояние до действия и после действия.</li><li>Если есть несколько waiting players, добавь проверку первого в списке.</li><li>Не полагайся только на count.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[regression] waitlisted player is promoted when participant leaves and order is preserved", async ({
+  loginPage,
+  homePage,
+  gameDetailsPage
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.boris.email);
+  await homePage.openGame(games.full);
+
+  await gameDetailsPage.expectWaitingPlayer(users.anton.name);
+
+  await gameDetailsPage.leave();
+
+  await gameDetailsPage.expectPlayer(users.anton.name);
+  await gameDetailsPage.expectWaitingPlayerAbsent(users.anton.name);
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>12. [regression] completed tournament updates ranking after page refresh</h3>
+        <div class="badge">tests/ranking.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет, что ranking не только обновился, но и переживает refresh.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Можно переиспользовать поток создания турнира из admin tests.</li><li>После completion переходи на ranking и делай page.reload().</li><li>Проверяй конкретного игрока и ожидаемые points.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[regression] completed tournament updates ranking after page refresh", async ({
+  adminTournamentsPage,
+  loginPage,
+  page
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.admin.email);
+  await adminTournamentsPage.goto();
+
+  await adminTournamentsPage.createTournament({
+    title: "Ranking Refresh Cup",
+    startsAt: "2026-07-12T18:00",
+    city: clubs.telAviv.city,
+    club: clubs.telAviv.name
+  });
+  await adminTournamentsPage.addParticipants(users.michael.name, users.anastasia.name);
+  await adminTournamentsPage.quickFillMatches("1");
+  await adminTournamentsPage.fillResult(users.michael.name, "1", "1");
+  await adminTournamentsPage.fillResult(users.anastasia.name, "1", "0");
+  await adminTournamentsPage.saveResults();
+  await adminTournamentsPage.completeTournament();
+
+  await page.goto("/ranking");
+  await page.reload();
+
+  await expect(page.getByTestId("ranking-player-Michael")).toContainText("27");
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>13. [regression] cancelled game deep link is read-only and not joinable</h3>
+        <div class="badge">tests/matches.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет, что скрытая cancelled game всё равно защищена при прямом URL.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Это хороший пример deep-link regression.</li><li>Используй getGameIdByTitle.</li><li>Проверяй отсутствие join и leave actions.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[regression] cancelled game deep link is read-only and not joinable", async ({
+  loginPage,
+  homePage,
+  gameDetailsPage
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.diana.email);
+  await homePage.expectGameHidden(games.cancelled);
+
+  await gameDetailsPage.goto(await getGameIdByTitle(games.cancelled));
+
+  await gameDetailsPage.expectBadge("Cancelled");
+  await gameDetailsPage.expectJoinUnavailable();
+  await gameDetailsPage.expectLeaveUnavailable();
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>14. [api] POST /api/level-assessment saves valid assessment for authenticated user</h3>
+        <div class="badge">tests/api.spec.ts</div>
+        <p><strong>Зачем:</strong> Показывает, что ты умеешь тестировать API в authenticated context.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Для authenticated API используй page.request после UI login.</li><li>Если endpoint меняет состояние, reset нужен перед тестом.</li><li>Проверяй и response.ok, и последующее состояние UI/API.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[api] POST /api/level-assessment saves valid assessment for authenticated user", async ({
+  loginPage,
+  page,
+  profilePage
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.sasha.email);
+
+  const response = await page.request.post("/api/level-assessment", {
+    data: { score: 14, level: 3.5 }
+  });
+
+  expect(response.ok()).toBeTruthy();
+
+  await profilePage.goto();
+  await expect(profilePage.card).toContainText("level 3.5");
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>15. [api] POST /api/level-assessment rejects unauthenticated request</h3>
+        <div class="badge">tests/api.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет security boundary API без cookies/session.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Этот тест использует request, значит reset вызывай явно в beforeEach.</li><li>Используй expectJsonError helper.</li><li>Не логинься в этом тесте.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>import { test, expect } from "./fixtures/test";
+import { expectJsonError } from "./utils/api";
+
+test.beforeEach(async ({ resetApp }) =&gt; {
+  await resetApp();
+});
+
+test("[api] POST /api/level-assessment rejects unauthenticated request", async ({ request }) =&gt; {
+  const response = await request.post("/api/level-assessment", {
+    data: { score: 14, level: 3.5 }
+  });
+
+  await expectJsonError(response, 401);
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>16. [api] POST /api/test/reset rejects invalid reset token</h3>
+        <div class="badge">tests/api.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет, что test-only reset endpoint защищён токеном.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Не вызывай resetApp beforeEach именно для этого теста, если хочешь проверить invalid token первым действием.</li><li>Ожидаемый статус обычно 401 или 403.</li><li>Не логируй реальные секреты.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[api] POST /api/test/reset rejects invalid reset token", async ({ request }) =&gt; {
+  const response = await request.post("/api/test/reset", {
+    headers: { "x-test-token": "wrong-token" }
+  });
+
+  expect(response.status()).toBe(401);
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>17. [smoke] guest can open home ranking login and register pages</h3>
+        <div class="badge">tests/smoke.spec.ts</div>
+        <p><strong>Зачем:</strong> Быстрый smoke для критичных public pages.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Smoke должен быть коротким и стабильным.</li><li>Проверяй ключевой элемент страницы, не весь контент.</li><li>Этот тест можно запускать отдельно перед полным regression.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[smoke] guest can open home ranking login and register pages", async ({ page }) =&gt; {
+  await page.goto("/");
+  await expect(page.getByTestId("games-list")).toBeVisible();
+
+  await page.goto("/ranking");
+  await expect(page.getByTestId("ranking-search")).toBeVisible();
+
+  await page.goto("/login");
+  await expect(page.getByTestId("login-form")).toBeVisible();
+
+  await page.goto("/register");
+  await expect(page.getByTestId("register-form")).toBeVisible();
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>18. [responsive] mobile user can login open match details and navigate profile</h3>
+        <div class="badge">tests/responsive.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет основной пользовательский поток на мобильном viewport.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Используй test.use только в этом файле или describe block.</li><li>Не проверяй pixel-perfect layout, проверяй доступность основных действий.</li><li>Если nav отличается на mobile, добавь методы в POM.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test.use({ viewport: { width: 390, height: 844 } });
+
+test("[responsive] mobile user can login open match details and navigate profile", async ({
+  loginPage,
+  homePage,
+  page
+}) =&gt; {
+  await loginPage.loginAndExpectHome(users.sasha.email);
+
+  await homePage.openGame(games.open);
+  await expect(page.getByRole("heading", { name: games.open })).toBeVisible();
+
+  await page.getByTestId("avatar-menu-button").click();
+  await page.getByTestId("nav-profile").click();
+
+  await expect(page.getByTestId("profile-card")).toBeVisible();
+});</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>19. [accessibility] critical pages have no blocking accessibility violations</h3>
+        <div class="badge">tests/accessibility.spec.ts</div>
+        <p><strong>Зачем:</strong> Показывает зрелость QA-подхода: базовая accessibility проверка критичных страниц.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Нужно установить @axe-core/playwright.</li><li>Начни с нескольких critical pages, не сканируй весь сайт.</li><li>В портфолио укажи, что violations triage делается отдельно.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>import AxeBuilder from "@axe-core/playwright";
+import { test, expect } from "./fixtures/test";
+
+for (const path of ["/", "/ranking", "/login", "/register"]) {
+  test(`[accessibility] ${path} has no blocking accessibility violations`, async ({ page }) =&gt; {
+    await page.goto(path);
+
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+
+    expect(results.violations).toEqual([]);
+  });
+}</code></pre>
+      </article>
+    
+      <article class="test-card">
+        <h3>20. [security] deactivated user cannot login</h3>
+        <div class="badge">tests/auth.spec.ts</div>
+        <p><strong>Зачем:</strong> Проверяет, что отключённый пользователь не может получить session.</p>
+        <p><strong>Подсказки:</strong></p>
+        <ul><li>Нужен seeded deactivated user или test helper/API для деактивации.</li><li>Проверяй ошибку login и отсутствие перехода на home.</li><li>Это security test, поэтому сценарий должен быть очень явным.</li></ul>
+        
+        <p><strong>Пример теста:</strong></p>
+        <pre><code>test("[security] deactivated user cannot login", async ({ loginPage, page }) =&gt; {
+  await loginPage.loginAs("deactivated@padel.test");
+
+  await loginPage.expectInvalidCredentials();
+  await expect(page.getByTestId("games-list")).toHaveCount(0);
+});</code></pre>
+      </article>
+    
+  </section>
+
+  <section class="page-break">
+    <h2>Чеклист перед commit</h2>
+    <ul>
+      <li><code>npm run typecheck</code> проходит.</li>
+      <li><code>npx playwright test tests/имя.spec.ts</code> проходит для нового файла.</li>
+      <li><code>npm run test:e2e</code> проходит перед финальной отправкой.</li>
+      <li>Тест не зависит от результата предыдущего теста.</li>
+      <li>Новые действия вынесены в POM, если они повторяются.</li>
+      <li>Тестовые данные взяты из <code>tests/data/test-data.ts</code>, а не разбросаны строками.</li>
+      <li>В API-only тестах reset вызван явно.</li>
+    </ul>
+  </section>
+</body>
+</html>
