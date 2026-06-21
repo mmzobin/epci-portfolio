@@ -4,15 +4,15 @@ A full‑stack community app for an amateur padel crew, running as a **Telegram 
 Players schedule games, fill line‑ups, track a live skill rating, and run small tournaments —
 all inside Telegram, with a bilingual (RU/EN) interface.
 
-> **Live demo:** <live-demo-url>
-> Built end‑to‑end (product, frontend, backend, database and **E2E tests**) by [@<your-github>](https://github.com/<your-github>).
+> **Live demo:** https://epci-platform.vercel.app
+> Built end‑to‑end (product, frontend, backend, database and **E2E tests**) by [@mzobin](https://github.com/mmzobin).
 
-[![E2E](https://github.com/<your-github>/<repo>/actions/workflows/e2e.yml/badge.svg)](https://github.com/<your-github>/<repo>/actions/workflows/e2e.yml)
-[![Nightly E2E](https://github.com/<your-github>/<repo>/actions/workflows/nightly-e2e.yml/badge.svg)](https://github.com/<your-github>/<repo>/actions/workflows/nightly-e2e.yml)
-[![Test report](https://img.shields.io/badge/test%20report-live-2ea44f)](https://<your-github>.github.io/<repo>/)
+[![E2E](https://github.com/mmzobin/epci-portfolio/actions/workflows/e2e.yml/badge.svg)](https://github.com/mmzobin/epci-portfolio/actions/workflows/e2e.yml)
+[![Nightly E2E](https://github.com/mmzobin/epci-portfolio/actions/workflows/nightly-e2e.yml/badge.svg)](https://github.com/mmzobin/epci-portfolio/actions/workflows/nightly-e2e.yml)
+[![Test report](https://img.shields.io/badge/test%20report-live-2ea44f)](https://mmzobin.github.io/epci-portfolio/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-📊 **Live Playwright report:** https://<your-github>.github.io/<repo>/ · 🧪 **Test strategy:** [`docs/qa-strategy.md`](docs/qa-strategy.md) · [coverage matrix](docs/test-coverage.md)
+📊 **Live Playwright report:** https://mmzobin.github.io/epci-portfolio/ · 🧪 **Test strategy:** [`docs/qa-strategy.md`](docs/qa-strategy.md) · [coverage matrix](docs/test-coverage.md)
 
 <!-- Add 2–4 screenshots here, e.g.: -->
 <!-- ![Games list](docs/screenshots/games.png) -->
@@ -78,7 +78,7 @@ See [`docs/qa-strategy.md`](docs/qa-strategy.md) for the CI/CD test strategy.
 ## Running locally
 
 ```bash
-git clone https://github.com/<your-github>/epci-padel-community.git
+git clone https://github.com/mmzobin/epci-padel-community.git
 cd epci-padel-community
 npm install
 cp .env.example .env        # fill in your own DATABASE_URL etc.
