@@ -78,7 +78,7 @@ See [`docs/qa-strategy.md`](docs/qa-strategy.md) for the CI/CD test strategy.
 ## Running locally
 
 ```bash
-git clone https://github.com/mmzobin/epci-padel-community.git
+git clone https://github.com/mmzobin/epci-portfolio.git
 cd epci-padel-community
 npm install
 cp .env.example .env        # fill in your own DATABASE_URL etc.
