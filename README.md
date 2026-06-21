@@ -14,10 +14,7 @@ all inside Telegram, with a bilingual (RU/EN) interface.
 
 📊 **Live Playwright report:** https://mmzobin.github.io/epci-portfolio/ · 🧪 **Test strategy:** [`docs/qa-strategy.md`](docs/qa-strategy.md) · [coverage matrix](docs/test-coverage.md)
 
-<!-- Add 2–4 screenshots here, e.g.: -->
-<!-- ![Games list](docs/screenshots/games.png) -->
-<!-- ![Rating leaderboard](docs/screenshots/rating.png) -->
-<!-- ![Match scorecard](docs/screenshots/match.png) -->
+<img width="1058" height="925" alt="app-home" src="https://github.com/user-attachments/assets/d7bd9088-bdd4-4f8f-8e11-56a73e6a9cb2" />
 
 ---
 
@@ -31,6 +28,8 @@ all inside Telegram, with a bilingual (RU/EN) interface.
 - **Live leaderboard** — ranking by game rating with weekly movement.
 - **Telegram notifications** — targeted DMs (game filled, court booked) and group announcements, designed to minimise spam.
 - **Roles & i18n** — admin / organizer / player roles, full RU/EN localisation.
+
+  <img width="1063" height="794" alt="app-match" src="https://github.com/user-attachments/assets/86f47b7f-93af-40d3-844e-634f1b3f776a" />
 
 ## Tech stack
 
@@ -54,6 +53,11 @@ End‑to‑end coverage with **Playwright**, structured for maintainability:
 - **Nightly and post-deploy coverage** — full regression runs nightly on isolated test databases, while production deploys run a read-only smoke suite with no reset, seed or migrations.
 - **Realistic flows covered** — registration + level assessment, authentication, matchmaking (join / waitlist / full), organizer management (create, edit, complete, cancel, mark paid / no‑show), rating eligibility, and responsive layouts across devices.
 - **Negative & edge cases** — e.g. joining an expired game, completing the wrong status, level‑range mismatches, duplicate players in a ranked round.
+
+  <img width="1018" height="2615" alt="test-report" src="https://github.com/user-attachments/assets/fdc6df87-76da-4e27-9145-e8209b43501c" />
+
+  <img width="1272" height="798" alt="trace" src="https://github.com/user-attachments/assets/70c23563-4284-4a23-9744-5b61b9b33eb5" />
+
 
 Run the suite:
 
