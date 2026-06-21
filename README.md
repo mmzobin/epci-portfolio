@@ -88,7 +88,7 @@ npm run dev
 
 > Note: this is a portfolio copy. Secrets are not included — provide your own database and (optional) Telegram bot credentials via environment variables.
 
-## What I learned
+## What I implemented
 
 - Designing a **fair rating system** for a small community: balancing convergence speed (K‑factor, provisional period) against the "feel" of per‑match swings, and preventing self‑rating inflation.
 - Keeping **E2E tests reliable** with the Page Object Model and isolated, anonymised fixtures.
