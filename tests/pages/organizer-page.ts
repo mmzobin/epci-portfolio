@@ -108,6 +108,13 @@ export class OrganizerPage extends BasePage {
     await this.testId(selectors.save).click();
   }
 
+  async createGameAndExpectSuccess(input: Parameters<OrganizerPage["createGame"]>[0]) {
+    await Promise.all([
+      this.page.waitForURL(/\/organizer\/games\/[^/]+\?saved=created$/),
+      this.createGame(input)
+    ]);
+  }
+
   async expectStatus(status: string) {
     await expect(this.testId(selectors.status)).toHaveText(status);
   }

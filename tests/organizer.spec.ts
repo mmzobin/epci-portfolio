@@ -1,24 +1,23 @@
 import { test, expect } from "./fixtures/test";
-import { devices } from "@playwright/test";
 import { clubs, fullName, games, users } from "./data/test-data";
+import { futureDateTimeLocal } from "./utils/dates";
 
 test.setTimeout(40_000);
 
 test.describe("Organizer matches", () => {
-  test("organizer creates a game", async ({ header, loginPage, organizerPage, page }) => {
+  test("organizer creates a game", async ({ header, loginPage, organizerPage }) => {
     await loginPage.loginAndExpectHome(users.oleg.email);
     await organizerPage.goto();
 
-    await organizerPage.createGame({
+    await organizerPage.createGameAndExpectSuccess({
       title: "Friday Rookie Padel",
-      startsAt: "2026-07-10T19:00",
+      startsAt: futureDateTimeLocal(),
       city: clubs.telAviv.city,
       clubLabel: clubs.telAviv.name,
       courtNumber: "A",
       maxPlayers: "4"
     });
 
-    await expect(page).toHaveURL(/\/organizer\/games\/[^/]+\?saved=created$/);
     await organizerPage.expectGameHeading("Friday Rookie Padel");
     await organizerPage.expectStatus("Open")
 
