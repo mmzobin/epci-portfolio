@@ -68,10 +68,10 @@ jobs:
         run: npx playwright test --grep-invert @prod-smoke --shard=${{ matrix.shard }} --workers=1
 
       - name: Upload Playwright report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: cross-browser-report-${{ strategy.job-index }}
           path: playwright-report
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 3
