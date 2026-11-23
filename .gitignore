@@ -13,3 +13,6 @@ tsconfig.tsbuildinfo
 backups/
 Гардероб-Михаил/
 Гардероб-Михаил/
+allure-results/
+allure-report/
+.triage/
