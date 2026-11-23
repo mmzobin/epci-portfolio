@@ -16,7 +16,7 @@ jobs:
   # One Qase test run shared by all shards (otherwise each shard would create its own run).
   qase-run:
     name: Create Qase run
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       run_id: ${{ steps.create.outputs.run_id }}
     steps:
@@ -43,7 +43,12 @@ jobs:
   nightly-regression:
     name: Nightly shard ${{ matrix.shard }}
     needs: qase-run
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # Official Playwright image: browsers + system deps preinstalled, so no slow
+    # `playwright install --with-deps` step. Keep the tag in sync with @playwright/test in package-lock.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      options: --user 1001
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -56,17 +61,15 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: padel_test
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d padel_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/padel_test
-      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/padel_test
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/padel_test
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/padel_test
+      DIRECT_URL: postgresql://postgres:postgres@postgres:5432/padel_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/padel_test
       TEST_RESET_TOKEN: local-test-token
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
       CI: true
@@ -86,9 +89,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
 
       - name: Apply migrations
         run: npx prisma migrate deploy
@@ -131,7 +131,7 @@ jobs:
     name: Allure report + close Qase run
     needs: [qase-run, nightly-regression]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Download Allure results
         uses: actions/download-artifact@v4
