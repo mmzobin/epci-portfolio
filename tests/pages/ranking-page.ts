@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { BasePage } from "./base-page";
 
 export const selectors = {
-  search: "ranking-search",
+  search: "ranking-search-input",
   player: (firstName: string) => `ranking-player-${firstName}`,
   firstPlayer: '[data-testid^="ranking-player-"]',
   tournamentStats: "player-tournament-stats",
