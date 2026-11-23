@@ -72,6 +72,36 @@ npx playwright test --ui   # interactive runner
 
 See [`docs/qa-strategy.md`](docs/qa-strategy.md) for the CI/CD test strategy.
 
+## AI-assisted QA pipeline
+
+The regression suite is wired into a reporting and triage loop where an AI agent (Claude Code)
+does the first pass on failures and a human reviews every outcome.
+
+```mermaid
+flowchart LR
+  A[Nightly regression<br/>4 shards, Playwright Docker image] --> B[Allure results<br/>merged report]
+  A --> C[Qase test run<br/>one run for all shards]
+  B --> D[Agent: triage-regression skill]
+  D -->|test bug| E[PR with fix<br/>human review]
+  D -->|product bug| F[Bug in Jira<br/>label needs-triage]
+  D -->|flaky / environment| G[Triage report]
+```
+
+- **Project memory for agents** — [`CLAUDE.md`](CLAUDE.md) describes the stack, test architecture,
+  fixtures, tags, CI and the rules an agent must follow, so every session starts with full context
+  instead of re-exploring the repo.
+- **Reporting** — every nightly run creates a single [Qase](https://qase.io) test run shared by all
+  shards, and produces a merged Allure report (artifacts kept 14 days). The Qase link is written to
+  the job summary.
+- **Triage skill** — [`.claude/skills/triage-regression`](.claude/skills/triage-regression/SKILL.md):
+  download the Allure results of the latest nightly, summarise failures
+  ([`scripts/allure-failures.mjs`](scripts/allure-failures.mjs)), classify each one
+  (flaky / environment / test bug / product bug), reproduce, then open a PR for test fixes and file
+  product bugs in Jira.
+- **Guardrails** — the agent works on a branch and never pushes to `main`; it may not change an
+  expected value to make a test green, add `skip`/`fixme` or raise timeouts silently, or run
+  anything against production. Duplicate failures with one root cause become one ticket.
+
 ## Architecture highlights
 
 - **Server Actions + server components** for data flow, with redirect‑based error handling.
