@@ -16,7 +16,7 @@ jobs:
   # One Qase test run shared by all shards (otherwise each shard would create its own run).
   qase-run:
     name: Create Qase run
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       run_id: ${{ steps.create.outputs.run_id }}
     steps:
@@ -43,7 +43,7 @@ jobs:
   nightly-regression:
     name: Nightly shard ${{ matrix.shard }}
     needs: qase-run
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -131,7 +131,7 @@ jobs:
     name: Allure report + close Qase run
     needs: [qase-run, nightly-regression]
     if: always()
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Download Allure results
         uses: actions/download-artifact@v4
