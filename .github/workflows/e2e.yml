@@ -9,7 +9,7 @@ on:
 jobs:
   quality:
     name: Typecheck and build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -54,7 +54,7 @@ jobs:
 
   e2e:
     name: Playwright shard ${{ matrix.shard }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: quality
     timeout-minutes: 20
     strategy:
