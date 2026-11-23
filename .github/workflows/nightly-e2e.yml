@@ -9,10 +9,46 @@ concurrency:
   group: nightly-e2e-regression
   cancel-in-progress: false
 
+env:
+  QASE_TESTOPS_PROJECT: EPCI
+
 jobs:
+  # One Qase test run shared by all shards (otherwise each shard would create its own run).
+  qase-run:
+    name: Create Qase run
+    runs-on: ubuntu-24.04
+    outputs:
+      run_id: ${{ steps.create.outputs.run_id }}
+    steps:
+      - name: Create Qase test run
+        id: create
+        env:
+          QASE_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
+        run: |
+          if [ -z "$QASE_TOKEN" ]; then
+            echo "QASE_TESTOPS_API_TOKEN secret is not set; Qase reporting disabled."
+            echo "run_id=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          title="Nightly regression $(date -u +%Y-%m-%d) #${GITHUB_RUN_NUMBER}"
+          response=$(curl -sS -X POST "https://api.qase.io/v1/run/${QASE_TESTOPS_PROJECT}" \
+            -H "Token: ${QASE_TOKEN}" -H "Content-Type: application/json" \
+            -d "{\"title\": \"${title}\", \"description\": \"${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\", \"include_all_cases\": false}")
+          run_id=$(echo "$response" | jq -r '.result.id // empty')
+          if [ -z "$run_id" ]; then
+            echo "::warning::Could not create Qase run: $(echo "$response" | jq -c '{status, errorMessage}')"
+          fi
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+
   nightly-regression:
     name: Nightly shard ${{ matrix.shard }}
-    runs-on: ubuntu-latest
+    needs: qase-run
+    runs-on: ubuntu-24.04
+    # Official Playwright image: browsers + system deps preinstalled, so no slow
+    # `playwright install --with-deps` step. Keep the tag in sync with @playwright/test in package-lock.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      options: --user 1001
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -25,20 +61,22 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: padel_test
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres -d padel_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/padel_test
-      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/padel_test
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/padel_test
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/padel_test
+      DIRECT_URL: postgresql://postgres:postgres@postgres:5432/padel_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/padel_test
       TEST_RESET_TOKEN: local-test-token
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
       CI: true
+      QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
+      QASE_TESTOPS_RUN_ID: ${{ needs.qase-run.outputs.run_id }}
+      # No shared run id -> don't report from shards (avoids 4 separate runs).
+      QASE_MODE: ${{ needs.qase-run.outputs.run_id != '' && 'testops' || 'off' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,9 +90,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
       - name: Apply migrations
         run: npx prisma migrate deploy
 
@@ -63,6 +98,15 @@ jobs:
 
       - name: Run nightly regression shard
         run: npx playwright test --grep-invert @prod-smoke --project=chromium --shard=${{ matrix.shard }} --workers=1
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ strategy.job-index }}
+          path: allure-results
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload Playwright report
         if: failure()
@@ -81,3 +125,57 @@ jobs:
           path: test-results
           if-no-files-found: ignore
           retention-days: 3
+
+  # Merge shard results into one Allure report and close the Qase run.
+  report:
+    name: Allure report + close Qase run
+    needs: [qase-run, nightly-regression]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download Allure results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-*
+          path: allure-results
+          merge-multiple: true
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Generate Allure report
+        run: |
+          if [ -d allure-results ] && [ -n "$(ls -A allure-results)" ]; then
+            npx --yes allure-commandline@2.46.1 generate allure-results --clean -o allure-report
+          else
+            echo "No Allure results to report."
+          fi
+
+      - name: Upload merged Allure results
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-merged
+          path: allure-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Allure report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Complete Qase run
+        if: needs.qase-run.outputs.run_id != ''
+        env:
+          QASE_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
+          RUN_ID: ${{ needs.qase-run.outputs.run_id }}
+        run: |
+          curl -sS -X POST "https://api.qase.io/v1/run/${QASE_TESTOPS_PROJECT}/${RUN_ID}/complete" \
+            -H "Token: ${QASE_TOKEN}" | jq -c '{status}'
+          echo "Qase run: https://app.qase.io/run/${QASE_TESTOPS_PROJECT}/dashboard/${RUN_ID}" >> "$GITHUB_STEP_SUMMARY"
