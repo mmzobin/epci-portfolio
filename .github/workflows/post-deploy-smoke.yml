@@ -17,6 +17,12 @@ jobs:
   production-smoke:
     name: Production smoke
     runs-on: ubuntu-24.04
+    # Official Playwright image: browsers + system deps preinstalled, so no apt-based
+    # `playwright install --with-deps` step (flaky when an Ubuntu mirror hiccups).
+    # Keep the tag in sync with @playwright/test in package-lock.json (same as nightly-e2e.yml).
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --user 1001
     timeout-minutes: 10
     if: >-
       github.event_name == 'workflow_dispatch' ||
@@ -45,9 +51,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
 
       - name: Print smoke target
         run: |
