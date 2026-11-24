@@ -12,7 +12,7 @@ PR + test evidence → done). A human reviews and merges every PR.
 
 - Site `mmzobin.atlassian.net`, cloudId `ab059a53-c70a-4b2d-a18b-46010dda8dc9`, project key `EPCI`
   (name EPCI-QA-Testing). Tools: Atlassian MCP server from `.mcp.json` (`mcp__atlassian__*`).
-- Issue types: Task, Story, Epic, Subtask (there is **no Bug type**).
+- Issue types: Bug, Task, Story, Epic, Subtask. Product defects are filed as **Bug** + label `needs-triage`.
 - Workflow: **To Do → In Progress → Done**, no In Review. Transition IDs seen so far: In Progress
   `21`, Done `31` — always confirm with `getTransitionsForJiraIssue` and pick by name.
 - If the Atlassian tools are missing or return auth errors, stop and tell the user to sign in via
