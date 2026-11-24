@@ -1,6 +1,6 @@
 ---
 name: triage-regression
-description: Triage the latest nightly Playwright regression for EPCI — download Allure results from GitHub Actions, classify each failure, rerun, open a PR for test fixes and file product bugs. Use when asked to "разбери регрессию", "triage the nightly", "why did nightly fail".
+description: Triage a failed EPCI Playwright regression — from the latest nightly, a GitHub Actions run, or a Qase run link — classify each failure, rerun, open a PR for test fixes and file product bugs in Jira. Use when asked to "разбери регрессию", "разбери прогон <qase link>", "triage the nightly", "why did nightly fail".
 ---
 
 # Triage nightly regression
@@ -10,16 +10,38 @@ Goal: turn a red nightly run into (a) a short triage report, (b) a PR with test-
 
 ## 1. Get the results
 
+Bugs live **only in Jira**. Qase holds runs, results and history; use it as an input and link to
+it, never file defects there.
+
+**Starting from GitHub Actions** (default: latest completed nightly):
+
 ```bash
-gh run list --workflow nightly-e2e.yml --limit 5            # pick the run (default: latest completed)
+gh run list --workflow nightly-e2e.yml --limit 5            # pick the run
 gh run download <run-id> -n allure-results-merged -D .triage/allure-results
 node scripts/allure-failures.mjs .triage/allure-results > .triage/failures.json
 ```
 
 If `allure-results-merged` is missing (report job failed), download every `allure-results-*`
 artifact into the same folder instead. `.triage/` is scratch — never commit it.
+Take the Qase run link from the run summary (`gh run view <run-id>`).
 
-Also note the Qase run link from the run summary (`gh run view <run-id>`).
+**Starting from a Qase link** (`https://app.qase.io/run/EPCI/dashboard/<qase-run-id>`):
+
+- The number in the URL is Qase's internal run id. The `#NNN` in the run title
+  ("Nightly regression 2026-11-23 #161") is the **GitHub Actions run number** — use it to find the
+  Actions run (`gh run list --workflow nightly-e2e.yml --json number,databaseId`) and download Allure
+  as above for traces and screenshots.
+- Read failures from the Qase REST API with `QASE_TESTOPS_API_TOKEN` from `.env`, sent as the
+  `Token` header. Never print the token.
+  ```bash
+  set -a; . ./.env; set +a
+  curl -sS -H "Token: $QASE_TESTOPS_API_TOKEN" "https://api.qase.io/v1/run/EPCI/<qase-run-id>"
+  curl -sS -H "Token: $QASE_TESTOPS_API_TOKEN" "https://api.qase.io/v1/result/EPCI?run=<qase-run-id>&status=failed&limit=100"
+  curl -sS -H "Token: $QASE_TESTOPS_API_TOKEN" "https://api.qase.io/v1/case/EPCI/<case-id>"   # test title
+  ```
+- Each retry is a separate result, so one failing test usually shows 3 results with the same
+  `case_id`. Group by `case_id`. The error text is in `stacktrace` / `comment`.
+- If the Qase token is missing or rejected, fall back to Allure only and say so in the report.
 
 ## 2. Classify every failure
 
@@ -58,14 +80,18 @@ Hard rules:
 - Never run `@prod-smoke` or anything against production.
 
 **Product bugs** — one ticket per distinct root cause (dedupe failures with the same cause):
-- Preferred: Jira via the Atlassian MCP server if it is configured, space `EPCI-QA-Testing`,
-  issue type Bug, label `needs-triage`.
-- Fallback: create a defect in Qase project `EPCI` (Qase pushes it to Jira through the
-  installed Jira Cloud integration), linking the test run.
+- Jira only, via the Atlassian MCP server: project `EPCI` (EPCI-QA-Testing), cloudId
+  `ab059a53-c70a-4b2d-a18b-46010dda8dc9`, work type **Bug**, label `needs-triage`.
+- **Do not create Qase defects.** Qase is not connected to Jira, so a defect there would be a
+  second, unsynced bug list.
 - Ticket content: title `[Nightly] <what is broken>`, steps (from the test), expected vs actual,
-  failing test name, Actions run link, Qase run link, screenshot/trace attachment names.
-- Before filing, search existing open tickets for the same failure and comment there instead.
-- If neither Jira MCP nor a Qase token is available, put the drafted tickets in the report and stop.
+  failing test name + file:line, Actions run link, Qase run link
+  (`https://app.qase.io/run/EPCI/dashboard/<qase-run-id>`), Qase case id(s), screenshot/trace
+  attachment names, and the suspect commit if you found one.
+- Before filing, search open EPCI tickets (JQL on the test name / error text) and comment there
+  instead of filing a duplicate.
+- If the Atlassian tools are missing or unauthorized, put the drafted tickets in the report and
+  stop; tell the user to sign in via `/mcp`.
 
 ## 5. Report back
 
