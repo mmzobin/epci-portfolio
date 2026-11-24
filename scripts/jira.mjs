@@ -7,6 +7,8 @@
 //   node scripts/jira.mjs find-open "<text>"             # open EPCI issues whose text matches (dedupe check)
 //   node scripts/jira.mjs create-bug <bug.json> [--dry-run]
 //   node scripts/jira.mjs comment <KEY> <comment.md> [--dry-run]
+//   node scripts/jira.mjs get <KEY>                      # summary, status, labels, description + comments as text
+//   node scripts/jira.mjs transition <KEY> "<status name>"   # e.g. "In Progress", "Done" (picked by name)
 //
 // bug.json: { "summary": "...", "description": "markdown-ish text", "labels": ["needs-triage"] }
 // Descriptions support paragraphs, "## " headings, "- " bullets and ``` code blocks.
@@ -80,6 +82,26 @@ function toAdf(markdown) {
   return { type: "doc", version: 1, content: content.length ? content : [{ type: "paragraph", content: [{ type: "text", text: " " }] }] };
 }
 
+// ADF → plain text (enough to read a ticket).
+function adfText(node) {
+  if (!node) return "";
+  if (node.type === "text") return node.text ?? "";
+  const inner = (node.content ?? []).map(adfText).join(node.type === "bulletList" || node.type === "orderedList" ? "" : "");
+  if (["paragraph", "heading", "codeBlock"].includes(node.type)) return inner + "\n";
+  if (node.type === "listItem") return "- " + inner;
+  if (node.type === "hardBreak") return "\n";
+  return inner;
+}
+
+const KEY_RE = new RegExp(`^${PROJECT}-\\d+$`);
+function checkKey(key) {
+  if (!KEY_RE.test(key ?? "")) {
+    console.error(`Issue key must look like ${PROJECT}-123`);
+    process.exit(2);
+  }
+  return key;
+}
+
 async function search(jql, max = 20) {
   const params = new URLSearchParams({ jql, maxResults: String(max), fields: "summary,status,issuetype,labels" });
   const data = await jira("GET", `/rest/api/3/search/jql?${params}`);
@@ -127,7 +149,34 @@ if (cmd === "search") {
     await jira("POST", `/rest/api/3/issue/${encodeURIComponent(key)}/comment`, body);
     console.log(JSON.stringify({ key, commented: true }));
   }
+} else if (cmd === "get") {
+  const key = checkKey(positional[0]);
+  const i = await jira("GET", `/rest/api/3/issue/${key}?fields=summary,status,issuetype,labels,description,comment`);
+  console.log(JSON.stringify({
+    key: i.key,
+    url: `${config().base}/browse/${i.key}`,
+    type: i.fields.issuetype?.name,
+    status: i.fields.status?.name,
+    labels: i.fields.labels,
+    summary: i.fields.summary,
+    description: adfText(i.fields.description).trim(),
+    comments: (i.fields.comment?.comments ?? []).map((c) => ({ author: c.author?.displayName, created: c.created, body: adfText(c.body).trim() }))
+  }, null, 2));
+} else if (cmd === "transition") {
+  const key = checkKey(positional[0]);
+  const target = (positional[1] ?? "").toLowerCase();
+  const { transitions = [] } = await jira("GET", `/rest/api/3/issue/${key}/transitions`);
+  const t = transitions.find((x) => x.name.toLowerCase() === target || x.to?.name?.toLowerCase() === target);
+  if (!t) {
+    console.error(`No transition to "${positional[1]}". Available: ${transitions.map((x) => x.to?.name ?? x.name).join(", ")}`);
+    process.exit(1);
+  }
+  if (dryRun) console.log(JSON.stringify({ dryRun: true, key, transition: t.id, to: t.to?.name }));
+  else {
+    await jira("POST", `/rest/api/3/issue/${key}/transitions`, { transition: { id: t.id } });
+    console.log(JSON.stringify({ key, status: t.to?.name ?? t.name }));
+  }
 } else {
-  console.error("Usage: node scripts/jira.mjs search <JQL> | find-open <text> | create-bug <file> [--dry-run] | comment <KEY> <file> [--dry-run]");
+  console.error("Usage: node scripts/jira.mjs search <JQL> | find-open <text> | create-bug <file> [--dry-run] | comment <KEY> <file> [--dry-run] | get <KEY> | transition <KEY> <status> [--dry-run]");
   process.exit(2);
 }
