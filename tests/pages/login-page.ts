@@ -8,7 +8,7 @@ export const selectors = {
   password: "login-password",
   submit: "login-submit",
   error: "login-error",
-  gamesList: "games-list",
+  gamesList: "home-games-list",
   forgotPasswordLink: "forgot-password-link",
   forgotPasswordForm: "forgot-password-form",
   headings: {

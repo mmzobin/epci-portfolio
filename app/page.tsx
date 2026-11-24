@@ -58,7 +58,7 @@ export default async function HomePage() {
           <h2 className="epci-section-title">{t("games.title")}</h2>
           <span className="rounded-full bg-court-soft px-3 py-1 text-sm font-black text-court">{games.length} {t("games.available")}</span>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="games-list">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="home-games-list">
           {games.map((game) => (
             <GameCard key={game.id} game={game} currentUserId={user?.id} currentUserRole={user?.role} userLevel={userRating ?? undefined} />
           ))}
