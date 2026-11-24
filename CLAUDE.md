@@ -63,6 +63,18 @@ Local runs need `DATABASE_URL`/`DIRECT_URL` pointing at a **local test DB** (sam
   limits, no API billing). Needs the Claude GitHub App on the repo. Pay-as-you-go alternative without a stored
   key: Anthropic workload identity federation (rule accepts `main` of `mmzobin/epci-portfolio`; verify with
   manual `anthropic-wif-check.yml`; Console org needs API credits).
+- Gotchas for `nightly-triage.yml` / `claude-code-action` (all hit on 2026-11-24):
+  - Workflow changes can't be tested from a branch: the action skips itself unless the workflow file is
+    identical to `main` ("Workflow validation failed", step still shows success). Merge, then dispatch.
+  - Keep `id-token: write` even without federation — the action uses GitHub OIDC to get the Claude App token.
+  - The action hides Claude's errors; the "Show Claude error" step prints only the final result message.
+    Never enable `show_full_output` (public repo: it would publish tool output).
+  - Secret `CLAUDE_CODE_OAUTH_TOKEN` must be one line (~112 chars). A terminal-wrapped paste fails with
+    "contains a line break". Safe re-set: `pbpaste | tr -d '\n\r ' | gh secret set CLAUDE_CODE_OAUTH_TOKEN`.
+  - Federation claims from GitHub use full refs: subject `repo:mmzobin/epci-portfolio:ref:refs/heads/main`,
+    `ref=refs/heads/main`; don't require `event_name=push` (triage runs on `workflow_run`/`workflow_dispatch`).
+    Console shows the reason under Keys → Workload identity → Authentication events.
+  - Claude subscription (Pro) and Console API credits are billed separately.
 
 ## Reporting & triage
 
