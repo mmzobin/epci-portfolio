@@ -90,8 +90,11 @@ Hard rules:
   attachment names, and the suspect commit if you found one.
 - Before filing, search open EPCI tickets (JQL on the test name / error text) and comment there
   instead of filing a duplicate.
-- If the Atlassian tools are missing or unauthorized, put the drafted tickets in the report and
-  stop; tell the user to sign in via `/mcp`.
+- **In CI** (no MCP): use `node scripts/jira.mjs` — `find-open "<text>"` to dedupe, `create-bug <file.json>`
+  (`{"summary","description","labels"}`, markdown-ish description) and `comment <KEY> <file.md>`. It reads
+  `JIRA_EMAIL`/`JIRA_API_TOKEN` from env and never prints them; `--dry-run` shows the payload.
+- If neither the Atlassian tools nor the script's credentials are available, put the drafted tickets
+  in the report and stop; locally, tell the user to sign in via `/mcp`.
 
 ## 5. Report back
 
