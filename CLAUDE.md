@@ -71,6 +71,9 @@ Local runs need `DATABASE_URL`/`DIRECT_URL` pointing at a **local test DB** (sam
   Qase's internal run id; the `#NNN` in a run title is the GitHub Actions run number.
   Jira project key `EPCI`: types Bug/Task/Story/Epic/Subtask (product defects → Bug), workflow To Do → In Progress → Done.
 - Work a Jira ticket ("возьми EPCI-N") with the skill `.claude/skills/jira-ticket/SKILL.md`.
+- Jira access is the Atlassian MCP server in `.mcp.json` (OAuth, no secrets in the file). Sign in once
+  via `/mcp` → atlassian → Connect. It uses the `/v1/mcp` endpoint, which Atlassian retires on
+  2027-03-01; switch to `https://mcp.atlassian.com/v2/mcp` before then.
 
 ## Secrets & env
 
