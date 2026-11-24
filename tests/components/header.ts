@@ -14,7 +14,7 @@ export const selectors = {
     adminTournaments: "nav-admin-tournaments"
   },
   ready: {
-    home: "games-list",
+    home: "home-games-list",
     games: "new-game-link",
     ranking: "ranking-list",
     tournaments: "tournaments-list",

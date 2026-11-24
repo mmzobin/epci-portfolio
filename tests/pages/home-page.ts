@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { BasePage } from "./base-page";
 
 export const selectors = {
-  gamesList: "games-list",
+  gamesList: "home-games-list",
   createGameButton: "hero-create",
   browseGamesButton: "hero-games",
   joinCommunityButton: "guest-join-community",
