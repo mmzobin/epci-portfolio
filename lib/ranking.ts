@@ -42,7 +42,7 @@ export async function getRatingRanking(): Promise<{ ranked: RatingEntry[]; unran
 
   const sorted = rows
     .filter((r) => r.hasRating)
-    .sort((a, b) => a.rating - b.rating || b.matchesPlayed - a.matchesPlayed || `${a.name} ${a.lastName}`.localeCompare(`${b.name} ${b.lastName}`, "ru"));
+    .sort((a, b) => b.rating - a.rating || b.matchesPlayed - a.matchesPlayed || `${a.name} ${a.lastName}`.localeCompare(`${b.name} ${b.lastName}`, "ru"));
 
   let lastRating: number | null = null;
   let lastPlace = 0;
