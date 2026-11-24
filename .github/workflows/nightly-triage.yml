@@ -1,6 +1,9 @@
 # Auto-triage a red nightly regression with Claude Code (skill: .claude/skills/triage-regression).
 # Runs after "Nightly E2E Regression" fails, or manually with an Actions run id.
-# Auth: Anthropic workload identity federation (no stored API key). The IDs are not secrets.
+# Auth: the owner's Claude subscription via secret CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`),
+# so runs cost nothing extra but share the subscription's usage limits. To switch to pay-as-you-go API
+# billing without a stored key, use the workload identity federation inputs instead (see
+# anthropic-wif-check.yml for the IDs) and drop claude_code_oauth_token.
 #
 # What it does in CI:
 #   - downloads the failed run's Allure results and summarises them (scripts/allure-failures.mjs)
@@ -28,7 +31,6 @@ permissions:
   contents: write
   pull-requests: write
   actions: read
-  id-token: write
 
 jobs:
   triage:
@@ -80,16 +82,23 @@ jobs:
           gh run view "${{ steps.run.outputs.id }}" > .triage/run-summary.txt || true
           jq '{total, passed, failedOrFlaky}' .triage/failures.json 2>/dev/null || head -c 2000 .triage/failures.json
 
+      - name: Check Claude credentials
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "::error::Secret CLAUDE_CODE_OAUTH_TOKEN is not set. Run 'claude setup-token' locally and add it under Settings → Secrets → Actions."
+            exit 1
+          fi
+
       - name: Triage with Claude Code
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_organization_id: 87a4d99b-fca1-4760-be5e-d38eb9104d52
-          anthropic_federation_rule_id: fdrl_01199Z6DLqpg1nnvC2hCnwJX
-          anthropic_service_account_id: svac_01RCUhhPTkxtT5P28wjeWAQC
-          anthropic_workspace_id: wrkspc_01C1A6KizEthpjtGLRDts8tV
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           additional_permissions: |
             actions: read
           claude_args: |
+            --model sonnet
             --max-turns 60
             --permission-mode default
             --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh run view:*),Bash(gh pr create:*),Bash(gh pr list:*),Bash(node scripts/allure-failures.mjs:*),Bash(jq:*),Bash(curl -sS:*)"
