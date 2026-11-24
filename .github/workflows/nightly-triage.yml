@@ -94,6 +94,7 @@ jobs:
           fi
 
       - name: Triage with Claude Code
+        id: claude
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -128,6 +129,15 @@ jobs:
             Finally write the triage report as Markdown to `.triage/report.md`: the table
             | Test | Bucket | Evidence | Action |, totals, links (Actions run, Qase run, PR), drafted Jira bugs,
             and anything that needs a human decision.
+
+      - name: Show Claude error (if any)
+        if: failure() && steps.claude.outputs.execution_file != ''
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        # Prints only the final result message, not the full transcript (which may contain tool output).
+        run: |
+          jq -r '[.[] | select(.type == "result")] | last | "is_error=\(.is_error) subtype=\(.subtype)\n\(.result // "no result text")"' "$EXECUTION_FILE" \
+            | tee -a "$GITHUB_STEP_SUMMARY" || true
 
       - name: Publish triage report
         if: always()
