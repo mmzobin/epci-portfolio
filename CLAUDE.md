@@ -67,6 +67,8 @@ Local runs need `DATABASE_URL`/`DIRECT_URL` pointing at a **local test DB** (sam
 - Triage a red nightly with the skill `.claude/skills/triage-regression/SKILL.md`;
   `node scripts/allure-failures.mjs <dir>` gives a compact JSON of failures.
 - Bugs go to Jira space `EPCI-QA-Testing` (label `needs-triage`), via Atlassian MCP or Qase defects.
+  Jira project key `EPCI`: types Task/Story/Epic/Subtask (no Bug), workflow To Do → In Progress → Done.
+- Work a Jira ticket ("возьми EPCI-N") with the skill `.claude/skills/jira-ticket/SKILL.md`.
 
 ## Secrets & env
 
