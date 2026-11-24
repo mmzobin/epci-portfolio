@@ -52,7 +52,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-
       - name: Print smoke target
         run: |
           node -e "const url = process.env.BASE_URL || ''; console.log(`Post-deploy smoke target: ${url}`); if (!url) { console.error('BASE_URL is empty'); process.exit(1); }"
