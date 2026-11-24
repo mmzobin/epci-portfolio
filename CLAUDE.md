@@ -58,9 +58,11 @@ Local runs need `DATABASE_URL`/`DIRECT_URL` pointing at a **local test DB** (sam
   to GitHub Pages. `post-deploy-smoke.yml` — `@prod-smoke` against production after deploy.
 - CI uses a throwaway Postgres container; it never touches production data.
 - `nightly-triage.yml` — after a failed nightly (or manual dispatch with a run id) runs Claude Code with the
-  `triage-regression` skill: report in the job summary, PR for test-side fixes, drafted Jira bugs. Auth is
-  Anthropic workload identity federation (no API key; rule accepts `mmzobin/epci-portfolio` only).
-  `anthropic-wif-check.yml` (manual) verifies that auth.
+  `triage-regression` skill: report in the job summary, PR for test-side fixes, drafted Jira bugs. Auth is the
+  owner's Claude subscription (secret `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`; shares its usage
+  limits, no API billing). Needs the Claude GitHub App on the repo. Pay-as-you-go alternative without a stored
+  key: Anthropic workload identity federation (rule accepts `main` of `mmzobin/epci-portfolio`; verify with
+  manual `anthropic-wif-check.yml`; Console org needs API credits).
 
 ## Reporting & triage
 
