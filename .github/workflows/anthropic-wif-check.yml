@@ -1,0 +1,50 @@
+# Manual check that GitHub Actions can get an Anthropic API token through workload identity
+# federation (no stored API key). Run it from main: Actions → anthropic-wif-check → Run workflow.
+# The IDs below are identifiers, not secrets. The federation rule only accepts tokens from
+# mmzobin/epci-portfolio, so running from another branch may be rejected on purpose.
+name: anthropic-wif-check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ANTHROPIC_ORGANIZATION_ID: 87a4d99b-fca1-4760-be5e-d38eb9104d52
+  ANTHROPIC_FEDERATION_RULE_ID: fdrl_01199Z6DLqpg1nnvC2hCnwJX
+  ANTHROPIC_SERVICE_ACCOUNT_ID: svac_01RCUhhPTkxtT5P28wjeWAQC
+  ANTHROPIC_WORKSPACE_ID: wrkspc_01C1A6KizEthpjtGLRDts8tV
+
+jobs:
+  token-exchange:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch GitHub OIDC token
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const token = await core.getIDToken('https://api.anthropic.com');
+            core.setSecret(token);
+            core.exportVariable('JWT', token);
+
+      - name: Exchange it for an Anthropic access token
+        run: |
+          body=$(jq -n \
+            --arg assertion "$JWT" \
+            --arg rule "$ANTHROPIC_FEDERATION_RULE_ID" \
+            --arg org "$ANTHROPIC_ORGANIZATION_ID" \
+            --arg svac "$ANTHROPIC_SERVICE_ACCOUNT_ID" \
+            --arg ws "$ANTHROPIC_WORKSPACE_ID" \
+            '{grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: $assertion,
+              federation_rule_id: $rule, organization_id: $org, service_account_id: $svac, workspace_id: $ws}')
+          status=$(curl -sS -o response.json -w '%{http_code}' https://api.anthropic.com/v1/oauth/token \
+            -H "content-type: application/json" --data "$body")
+          # Never print tokens: redact every *token field before showing the response.
+          jq 'with_entries(if (.key | test("token$")) then .value = "<redacted>" else . end)' response.json
+          rm -f response.json
+          echo "HTTP $status"
+          [ "$status" = "200" ] || { echo "::error::Token exchange failed (HTTP $status)"; exit 1; }
+          echo "Workload identity federation works ✅" >> "$GITHUB_STEP_SUMMARY"

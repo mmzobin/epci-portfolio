@@ -1,0 +1,139 @@
+# Auto-triage a red nightly regression with Claude Code (skill: .claude/skills/triage-regression).
+# Runs after "Nightly E2E Regression" fails, or manually with an Actions run id.
+# Auth: Anthropic workload identity federation (no stored API key). The IDs are not secrets.
+#
+# What it does in CI:
+#   - downloads the failed run's Allure results and summarises them (scripts/allure-failures.mjs)
+#   - Claude classifies every failure, fixes test-side bugs on a branch and opens a PR
+#   - writes a triage report (job summary + artifact) with drafted Jira bugs for product defects
+# Not done in CI yet: filing Jira tickets (Atlassian MCP needs interactive OAuth) and local reruns
+# (no test DB in this job). Both are called out in the report.
+name: Nightly Triage
+
+on:
+  workflow_run:
+    workflows: ["Nightly E2E Regression"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Actions run id of the nightly to triage (empty = latest failed nightly)"
+        required: false
+
+concurrency:
+  group: nightly-triage
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  id-token: write
+
+jobs:
+  triage:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Resolve the nightly run to triage
+        id: run
+        env:
+          INPUT_RUN_ID: ${{ inputs.run_id }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          run_id="${INPUT_RUN_ID:-$EVENT_RUN_ID}"
+          if [ -z "$run_id" ]; then
+            run_id=$(gh run list --workflow nightly-e2e.yml --status failure --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          [ -n "$run_id" ] || { echo "::error::No failed nightly run found"; exit 1; }
+          gh run view "$run_id" --json number,url,conclusion,headSha,createdAt > run.json
+          echo "id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "number=$(jq -r .number run.json)" >> "$GITHUB_OUTPUT"
+          echo "url=$(jq -r .url run.json)" >> "$GITHUB_OUTPUT"
+          cat run.json
+
+      - name: Download Allure results
+        run: |
+          mkdir -p .triage
+          mv run.json .triage/run.json
+          if ! gh run download "${{ steps.run.outputs.id }}" -n allure-results-merged -D .triage/allure-results; then
+            echo "allure-results-merged missing; downloading per-shard results"
+            gh run download "${{ steps.run.outputs.id }}" -p 'allure-results-*' -D .triage/shards
+            mkdir -p .triage/allure-results
+            find .triage/shards -type f -exec cp {} .triage/allure-results/ \;
+          fi
+          node scripts/allure-failures.mjs .triage/allure-results > .triage/failures.json
+          gh run view "${{ steps.run.outputs.id }}" > .triage/run-summary.txt || true
+          jq '{total, passed, failedOrFlaky}' .triage/failures.json 2>/dev/null || head -c 2000 .triage/failures.json
+
+      - name: Triage with Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_organization_id: 87a4d99b-fca1-4760-be5e-d38eb9104d52
+          anthropic_federation_rule_id: fdrl_01199Z6DLqpg1nnvC2hCnwJX
+          anthropic_service_account_id: svac_01RCUhhPTkxtT5P28wjeWAQC
+          anthropic_workspace_id: wrkspc_01C1A6KizEthpjtGLRDts8tV
+          additional_permissions: |
+            actions: read
+          claude_args: |
+            --max-turns 60
+            --permission-mode default
+            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh run view:*),Bash(gh pr create:*),Bash(gh pr list:*),Bash(node scripts/allure-failures.mjs:*),Bash(jq:*),Bash(curl -sS:*)"
+          prompt: |
+            You are triaging a failed nightly Playwright regression in ${{ github.repository }}.
+
+            First read and follow `.claude/skills/triage-regression/SKILL.md` and the rules in `CLAUDE.md`.
+
+            Inputs are already prepared (skip the download step of the skill):
+            - Actions run: ${{ steps.run.outputs.url }} (run number #${{ steps.run.outputs.number }}, id ${{ steps.run.outputs.id }})
+            - `.triage/run.json`, `.triage/run-summary.txt` (contains the Qase run link if Qase reporting was on)
+            - `.triage/failures.json` (compact failures from Allure) and raw results in `.triage/allure-results/`
+            - Qase API token is in env `QASE_TESTOPS_API_TOKEN` if you need Qase results. Never print it.
+
+            CI constraints:
+            - There is no test database in this job: do NOT try to run Playwright. Reason from traces,
+              errors, screenshots names and `git log -p` since the last green nightly, and say so in the report.
+            - Jira is not reachable from CI. Do NOT try to file tickets; draft them in the report instead
+              (title, steps, expected vs actual, test, links), exactly as the skill describes for that case.
+            - Test-side fixes: create branch `fix/nightly-${{ steps.run.outputs.number }}` from `main`, one commit
+              per test, push, and open ONE PR with `gh pr create --base main`. Never change assertion values,
+              never add skip/fixme or raise timeouts. If there is nothing to fix on the test side, open no PR.
+            - Never touch `.triage/` in git (it is ignored) and never run anything against production.
+
+            Finally write the triage report as Markdown to `.triage/report.md`: the table
+            | Test | Bucket | Evidence | Action |, totals, links (Actions run, Qase run, PR), drafted Jira bugs,
+            and anything that needs a human decision.
+
+      - name: Publish triage report
+        if: always()
+        run: |
+          if [ -f .triage/report.md ]; then
+            cat .triage/report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No triage report was produced. See the Claude step log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload triage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-triage-${{ steps.run.outputs.number }}
+          path: |
+            .triage/report.md
+            .triage/failures.json
+          if-no-files-found: ignore
+          retention-days: 14
