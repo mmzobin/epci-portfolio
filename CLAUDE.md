@@ -84,7 +84,8 @@ Local runs need `DATABASE_URL`/`DIRECT_URL` pointing at a **local test DB** (sam
   artifacts (14 days) and writes the Qase run link to the job summary.
 - Triage a red nightly with the skill `.claude/skills/triage-regression/SKILL.md`;
   `node scripts/allure-failures.mjs <dir>` gives a compact JSON of failures.
-- Bugs go **only** to Jira space `EPCI-QA-Testing` (label `needs-triage`) via Atlassian MCP. Qase is for
+- Bugs go **only** to Jira space `EPCI-QA-Testing` (label `needs-triage`) via Atlassian MCP (locally) or
+  `node scripts/jira.mjs` (CI; secrets `JIRA_EMAIL` + `JIRA_API_TOKEN`). Qase is for
   runs/results only — don't create Qase defects (Qase isn't integrated with Jira). Qase run URLs use
   Qase's internal run id; the `#NNN` in a run title is the GitHub Actions run number.
   Jira project key `EPCI`: types Bug/Task/Story/Epic/Subtask (product defects → Bug), workflow To Do → In Progress → Done.

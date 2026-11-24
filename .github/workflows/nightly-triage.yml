@@ -8,9 +8,10 @@
 # What it does in CI:
 #   - downloads the failed run's Allure results and summarises them (scripts/allure-failures.mjs)
 #   - Claude classifies every failure, fixes test-side bugs on a branch and opens a PR
-#   - writes a triage report (job summary + artifact) with drafted Jira bugs for product defects
-# Not done in CI yet: filing Jira tickets (Atlassian MCP needs interactive OAuth) and local reruns
-# (no test DB in this job). Both are called out in the report.
+#   - files product defects as Jira Bugs via scripts/jira.mjs (REST; dedupes against open EPCI issues)
+#     when JIRA_EMAIL + JIRA_API_TOKEN secrets are set, otherwise drafts them in the report
+#   - writes a triage report (job summary + artifact)
+# Not done in CI: local reruns (no test DB in this job). Called out in the report.
 name: Nightly Triage
 
 on:
@@ -42,6 +43,9 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
+      JIRA_BASE_URL: https://mmzobin.atlassian.net
+      JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -104,7 +108,7 @@ jobs:
             --model sonnet
             --max-turns 60
             --permission-mode default
-            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh run view:*),Bash(gh pr create:*),Bash(gh pr list:*),Bash(node scripts/allure-failures.mjs:*),Bash(jq:*),Bash(curl -sS:*)"
+            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git switch:*),Bash(git checkout:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh run view:*),Bash(gh pr create:*),Bash(gh pr list:*),Bash(node scripts/allure-failures.mjs:*),Bash(node scripts/jira.mjs:*),Bash(jq:*),Bash(curl -sS:*)"
           prompt: |
             You are triaging a failed nightly Playwright regression in ${{ github.repository }}.
 
@@ -119,15 +123,22 @@ jobs:
             CI constraints:
             - There is no test database in this job: do NOT try to run Playwright. Reason from traces,
               errors, screenshots names and `git log -p` since the last green nightly, and say so in the report.
-            - Jira is not reachable from CI. Do NOT try to file tickets; draft them in the report instead
-              (title, steps, expected vs actual, test, links), exactly as the skill describes for that case.
+            - Jira: the Atlassian MCP is not available here; use `node scripts/jira.mjs` instead (never curl Jira,
+              never print credentials). Only for **product bugs**, at most 5 per run:
+              1. `node scripts/jira.mjs find-open "<test name or key error text>"` to check for an open duplicate.
+              2. Duplicate found → write a comment to `.triage/jira/<key>-comment.md` and run
+                 `node scripts/jira.mjs comment <KEY> <file>` (new run link + what changed).
+              3. Otherwise write `.triage/jira/bug-<n>.json` ({"summary","description","labels"}) as the skill
+                 describes and run `node scripts/jira.mjs create-bug <file>`.
+              If the script exits with code 2 (credentials not configured), do not retry: draft the tickets
+              in the report instead. Put every created/commented issue key + URL in the report.
             - Test-side fixes: create branch `fix/nightly-${{ steps.run.outputs.number }}` from `main`, one commit
               per test, push, and open ONE PR with `gh pr create --base main`. Never change assertion values,
               never add skip/fixme or raise timeouts. If there is nothing to fix on the test side, open no PR.
             - Never touch `.triage/` in git (it is ignored) and never run anything against production.
 
             Finally write the triage report as Markdown to `.triage/report.md`: the table
-            | Test | Bucket | Evidence | Action |, totals, links (Actions run, Qase run, PR), drafted Jira bugs,
+            | Test | Bucket | Evidence | Action |, totals, links (Actions run, Qase run, PR, Jira issues), drafted Jira bugs if any,
             and anything that needs a human decision.
 
       - name: Show Claude error (if any)
