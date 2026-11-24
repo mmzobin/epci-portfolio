@@ -91,6 +91,16 @@ jobs:
           ref: ${{ steps.input.outputs.base }}
           fetch-depth: 0
 
+      # Done by the workflow, not left to Claude: the first CI run (EPCI-5) commented "picked up" but the
+      # status stayed To Do. Skipped when the ticket is already In Progress.
+      - name: Move ticket to In Progress
+        env:
+          KEY: ${{ steps.input.outputs.key }}
+        run: |
+          status=$(node scripts/jira.mjs get "$KEY" | jq -r .status)
+          echo "$KEY is '$status'"
+          if [ "$status" != "In Progress" ]; then node scripts/jira.mjs transition "$KEY" "In Progress"; fi
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -137,7 +147,8 @@ jobs:
             - If the ticket is a product Bug, the failing test is the evidence: fix the app, never change an
               assertion's expected value, add skip/fixme or raise timeouts. If the fix would need that, or the
               ticket is ambiguous, do not guess: comment the question on the ticket and stop without a PR.
-            - Leave the ticket In Progress when the PR is open (a human merges and closes it).
+            - The workflow already moved the ticket to In Progress; don't transition it yourself. Leave it there
+              when the PR is open (a human merges and closes it). Don't claim a status you haven't verified.
 
             At the end write a short Markdown summary to `.triage/jira-fix.md`: ticket, branch, PR link,
             tests before → after, and anything that needs a human decision.
