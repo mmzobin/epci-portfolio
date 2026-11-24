@@ -31,6 +31,8 @@ permissions:
   contents: write
   pull-requests: write
   actions: read
+  # Required by claude-code-action itself: it exchanges a GitHub OIDC token for the Claude GitHub App token.
+  id-token: write
 
 jobs:
   triage:
