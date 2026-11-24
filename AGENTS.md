@@ -58,6 +58,7 @@ Local runs need `DATABASE_URL`/`DIRECT_URL` pointing at a **local test DB** (sam
 - `e2e.yml` — PRs/pushes. `cross-browser-e2e.yml` — all projects. `publish-report.yml` — HTML report
   to GitHub Pages. `post-deploy-smoke.yml` — `@prod-smoke` against production after deploy.
 - CI uses a throwaway Postgres container; it never touches production data.
+- `jira-fix.yml` — Claude works an EPCI ticket on label `claude-fix` (see Reporting & triage).
 - `nightly-triage.yml` — after a failed nightly (or manual dispatch with a run id) runs Claude Code with the
   `triage-regression` skill: report in the job summary, PR for test-side fixes, drafted Jira bugs. Auth is the
   owner's Claude subscription (secret `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`; shares its usage
@@ -91,6 +92,10 @@ Local runs need `DATABASE_URL`/`DIRECT_URL` pointing at a **local test DB** (sam
   Qase's internal run id; the `#NNN` in a run title is the GitHub Actions run number.
   Jira project key `EPCI`: types Bug/Task/Story/Epic/Subtask (product defects → Bug), workflow To Do → In Progress → Done.
 - Work a Jira ticket ("возьми EPCI-N") with the skill `.claude/skills/jira-ticket/SKILL.md`.
+  From Jira: add label `claude-fix` → Jira Automation sends `repository_dispatch` (`jira-fix`) →
+  `jira-fix.yml` runs the same skill in CI (seeded Postgres, before/after specs, PR, ticket comment).
+  Manual start: Actions → Jira Fix with an issue key. Jira side needs a fine-grained GitHub token stored in
+  the automation rule only.
 - Jira access is the Atlassian MCP server in `.mcp.json` (OAuth, no secrets in the file). Sign in once
   via `/mcp` → atlassian → Connect. It uses the `/v1/mcp` endpoint, which Atlassian retires on
   2027-03-01; switch to `https://mcp.atlassian.com/v2/mcp` before then.

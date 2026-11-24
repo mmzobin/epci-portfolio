@@ -129,7 +129,7 @@ jobs:
               2. Duplicate found → write a comment to `.triage/jira/<key>-comment.md` and run
                  `node scripts/jira.mjs comment <KEY> <file>` (new run link + what changed).
               3. Otherwise write `.triage/jira/bug-<n>.json` ({"summary","description","labels"}) as the skill
-                 describes and run `node scripts/jira.mjs create-bug <file>`.
+                 describes (description in Markdown with `## ` headings, not Jira wiki markup like `h3.`) and run `node scripts/jira.mjs create-bug <file>`.
               If the script exits with code 2 (credentials not configured), do not retry: draft the tickets
               in the report instead. Put every created/commented issue key + URL in the report.
             - Test-side fixes: create branch `fix/nightly-${{ steps.run.outputs.number }}` from `main`, one commit

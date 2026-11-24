@@ -17,6 +17,10 @@ PR + test evidence → done). A human reviews and merges every PR.
   `21`, Done `31` — always confirm with `getTransitionsForJiraIssue` and pick by name.
 - If the Atlassian tools are missing or return auth errors, stop and tell the user to sign in via
   `/mcp` (Connect on `atlassian`). Don't work around it with the REST API or tokens from `.env`.
+- **In CI** (`.github/workflows/jira-fix.yml`, started by the Jira label `claude-fix`) there is no MCP:
+  use `node scripts/jira.mjs get <KEY>`, `transition <KEY> "In Progress"`, `comment <KEY> <file.md>`
+  (Markdown body, `## ` headings — not Jira wiki markup). The workflow already runs a seeded throwaway
+  Postgres, so the before/after Playwright runs work there too.
 
 ## 1. Read the ticket
 
