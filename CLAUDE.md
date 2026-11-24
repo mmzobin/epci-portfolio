@@ -57,6 +57,10 @@ Local runs need `DATABASE_URL`/`DIRECT_URL` pointing at a **local test DB** (sam
 - `e2e.yml` — PRs/pushes. `cross-browser-e2e.yml` — all projects. `publish-report.yml` — HTML report
   to GitHub Pages. `post-deploy-smoke.yml` — `@prod-smoke` against production after deploy.
 - CI uses a throwaway Postgres container; it never touches production data.
+- `nightly-triage.yml` — after a failed nightly (or manual dispatch with a run id) runs Claude Code with the
+  `triage-regression` skill: report in the job summary, PR for test-side fixes, drafted Jira bugs. Auth is
+  Anthropic workload identity federation (no API key; rule accepts `mmzobin/epci-portfolio` only).
+  `anthropic-wif-check.yml` (manual) verifies that auth.
 
 ## Reporting & triage
 
